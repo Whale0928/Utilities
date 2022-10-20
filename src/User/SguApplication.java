@@ -8,12 +8,23 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class SguUtils {
+
+/**
+ * SGU에서 사용하기 위한 기능 모음
+ */
+public class SguApplication {
+    static InputText in = new InputText();
+    static SguApplication app = new SguApplication();
+
     public static void main(String[] args) {
-        InputText in = new InputText();
+        app.getTableNames();
+    }
+
+    /**
+     * 텍스트 파일로 저장된 쿼리에서 . 테이블 이름만 추출하는 메서드
+     */
+    void getTableNames(){
         String str =  in.inputString("/Users/deadwhale/Downloads/QueryTxt.txt").toUpperCase();
-
-
         boolean flag = false;
 
         StringBuilder sb = new StringBuilder();
