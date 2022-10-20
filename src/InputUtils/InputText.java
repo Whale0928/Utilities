@@ -12,7 +12,7 @@ import java.util.Arrays;
 public class InputText {
 
 
-    /**
+    /**텍스트 파일을 읽어 한줄로 내보내는 기능
      * @param filePath 파일경로가 저장되있어야 한다.
      * @return 한줄로 정렬된 문자열
      */
