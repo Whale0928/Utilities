@@ -41,7 +41,7 @@ public class InputText {
             System.out.println(s);
         }
 
-
+        System.out.println("수정?");
     }
 
 
