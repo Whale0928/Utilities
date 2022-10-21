@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--─────────────────────────────────────
+  = (@)# busa0020.stmt
+  = 
+  =   @ Author :2015.03.09
+  =   @ Date : 2015.03.09 Kwon Sehoon) : Create
+  ─────────────────────────────────────-->  
+  
+<statements>	
+    <!-- 첫번째 Grid : 마스터  조회 -->  
+	<statement id="getMainList">
+		<sql><![CDATA[	
+			SELECT COMP_CD
+			    ,  '999' AS INQ_ORD
+			    ,  SHOP_TP AS SHOP_TP_CD
+			    ,  FN_GET_CFCODE_NM(COMP_CD, 'SL009', SHOP_TP) AS SHOP_TP
+			    ,  SHOP_CD
+			    ,  FN_GET_SHOP_NM(COMP_CD, SHOP_CD) AS SHOP_NM
+			    ,  IN_DATE AS SORT
+			    ,  TO_NUMBER(SUBSTR(IN_DATE, 7, 2)) || '일' AS INDATE
+			    ,  SUBSTR(TO_CHAR(TO_DATE(IN_DATE, 'YYYYMMDD'), 'DAY'), 1, 1) AS DAY
+				#{rdoSear}
+			FROM(
+			    SELECT A.COMP_CD
+			        ,  B.SALE_DT AS IN_DATE
+			        ,  A.SHOP_CD
+			        ,  DECODE(A.SUP_INQ_YN, 'Y', B.SUP_AMT, B.SALE_AMT) AS SALE_AMT
+			        ,  B.SALE_QTY
+			        ,  A.SHOP_TP
+			        ,  C.PLAN_CHG_AMT
+			    FROM SHSHOP A,SLDAYSHOPBRDSUM B , SLPLANDAY C
+			    WHERE 1 = 1
+			        AND A.COMP_CD = ${variableScope.gv_CompCd}
+			        AND A.COMP_CD = B.COMP_CD
+			        AND A.SHOP_CD = B.SHOP_CD
+			        AND B.COMP_CD = C.COMP_CD(+)
+			        AND B.SHOP_CD = C.SHOP_CD(+)
+			        AND B.SALE_DT = C.PLAN_DT(+)
+			        AND C.BIZ_DIV(+) = ${biz_div}
+			        AND B.SALE_DT LIKE ${mskMon} || '%'
+			        AND EXISTS(
+			            SELECT 'X'
+			            FROM SHSHOPBRD E
+			            WHERE 1 = 1
+			                AND E.COMP_CD = B.COMP_CD
+			                AND E.SHOP_CD = B.SHOP_CD
+			                AND E.BR_CD   = B.BR_CD
+			                AND E.BIZ_DIV = ${biz_div}
+			                #{teamCd}
+			                #{checkWhere2}
+			                #{chkOnOnlyYn}
+			        )
+			        #{checkWhere}
+			        #{rdoGubun}
+			        #{shopTp}
+			        #{shopGb}
+			)
+			GROUP BY COMP_CD, SHOP_TP, SHOP_CD, IN_DATE
+			ORDER BY SHOP_TP, SHOP_CD, IN_DATE
+  	 ]]></sql>
+	<fragment id = "checkWhere">
+		<if test="${not empty edtShopCd}">  <![CDATA[ AND A.SHOP_CD   = ${edtShopCd}   ]]></if>
+        <if test="${not empty edtShopStat}"><![CDATA[ AND A.SHOP_STAT = ${edtShopStat} ]]></if>
+        <if test="${not empty edtAreaCd}">  <![CDATA[ AND A.AREA_CD   = ${edtAreaCd}   ]]></if>
+        <if test="${not empty edtGrpCd}"><![CDATA[
+				AND EXISTS
+                  (
+                     SELECT 'X'
+                      FROM CFSHGRPH E,CFSHGRPD F
+                     WHERE 1 = 1
+			                AND E.COMP_CD = A.COMP_CD
+			                AND F.COMP_CD = A.COMP_CD
+			                AND F.SHOP_CD = A.SHOP_CD
+			                AND F.GRP_ID = ${edtGrpCd}
+			                AND E.BIZ_DIV = ${biz_div}
+			                AND E.BIZ_DIV = F.BIZ_DIV
+                   )  
+
+	         ]]></if>
+    </fragment>
+	<fragment id = "checkWhere2">
+             <if test="${not empty shop_user and chkOnOnlyYn == 'N'}"><![CDATA[ AND D.TEAM_CD || ':' || D.SHOP_USER = ${shop_user} ]]></if>       
+    </fragment>
+    
+    <fragment id = "chkOnOnlyYn">
+             <if test="${chkOnOnlyYn == 'Y'}"><![CDATA[ AND D.TEAM_CD || ':' || D.SHOP_USER = '01:30' ]]></if>       
+    </fragment>
+    
+
+    <fragment id = "rdoSear">
+        <if test="${rdoSear =='1'}"><![CDATA[ , SUM(SALE_AMT) AS SALE_AMT, MAX(PLAN_CHG_AMT) AS PLAN_AMT	]]></if>
+        <if test="${rdoSear =='2'}"><![CDATA[ , SUM(SALE_QTY) AS SALE_AMT, MAX(PLAN_CHG_AMT) AS PLAN_AMT	]]></if>
+    </fragment>
+    <fragment id="rdoGubun">
+    	<if test="${rdoGubun == '1'}"><![CDATA[ AND (C.PLAN_MON IS NULL OR C.PLAN_MON = ${mskMon})															]]></if>
+    	<if test="${rdoGubun == '2'}"><![CDATA[ AND (C.PLAN_DT IS NULL OR (C.PLAN_DT >= ${mskMon}||'01' AND C.PLAN_DT <= ${mskDt}))		]]></if>
+    </fragment>
+	    <fragment id="teamCd" ref="teamCd" />
+		<fragment id="shopGb" ref="shopGb" />
+		<fragment id="shopTp" ref="shopTp" />
+
+	</statement> 
+	
+	
+</statements>
