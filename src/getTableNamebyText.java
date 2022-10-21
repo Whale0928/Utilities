@@ -40,14 +40,14 @@ public class getTableNamebyText {
         getTableNamebyText in = new getTableNamebyText();
         
         String path ="D:/untitled/queryTxt.txt";
-        String str =  in.inputString(path).toUpperCase();
-        
+        String str =  in.inputString(path);
+        str = str.toUpperCase();
 
 
         boolean flag = false;
 
         StringBuilder sb = new StringBuilder();
-        String[] arr = str.split("[^\\w]");
+        String[] arr = str.split("[^\\w_#]");
 
         List<String> list = new ArrayList<>();
         for (String s : arr){
@@ -63,6 +63,7 @@ public class getTableNamebyText {
             }else if(branch==2){
                 flag = false;  // 저장할 필요가 없는 경우 서브쿼리에서 사용된다
                                //  from (SELECT ~
+                sb.delete(0,sb.length()); //버퍼된 내용을 지우면서 제거.
                 continue;
             }
             if(flag) sb.append(" ").append(s);
@@ -70,10 +71,10 @@ public class getTableNamebyText {
 
         String[] sArr = list.toString().replaceAll(","," ").split(" ");
         Set<String> collect = Arrays.stream(sArr)
-                        .filter(l -> l.length() > 2)
+                        .filter(l->l.length() > 3)
                         .filter(l->!l.equals("CFCODE"))
-                        .filter(l-> !l.equals("PLSTYCD"))
-                        .filter(l-> !l.equals("SHSHOP"))
+                        .filter(l->!l.equals("PLSTYCD"))
+                        .filter(l->!l.equals("SHSHOP"))
                         .collect(Collectors.toSet());
 
         System.out.println(collect);
@@ -101,8 +102,22 @@ public class getTableNamebyText {
                 break;
 
             //저장하지 않고 초기화 해야하는 경우
+            //키워드 구분.
+            case "#":
+                System.out.println(s+"살아있음");
             case "SELECT":
-            case "YYMM": result =2;
+            case "WITH":
+            case "TEMP":
+            case "CHECKSELECT":
+            case "CHECKWHERE":
+            case "CHECKGROUPBY":
+            case "CHECKMONTH":
+            case "YYMM":
+            case "DT":
+            case "VW":
+            case "CD":
+            case "FRAGMENT":
+            case "YYYYMMDD": result =2;
                 break;
 
            //EXISTS 가 잇는 경우 같이 알림.

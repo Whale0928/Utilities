@@ -1,105 +1,772 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!--─────────────────────────────────────
-  = (@)# busa0020.stmt
-  = 
-  =   @ Author :2015.03.09
-  =   @ Date : 2015.03.09 Kwon Sehoon) : Create
-  ─────────────────────────────────────-->  
-  
-<statements>	
-    <!-- 첫번째 Grid : 마스터  조회 -->  
-	<statement id="getMainList">
-		<sql><![CDATA[	
-			SELECT COMP_CD
-			    ,  '999' AS INQ_ORD
-			    ,  SHOP_TP AS SHOP_TP_CD
-			    ,  FN_GET_CFCODE_NM(COMP_CD, 'SL009', SHOP_TP) AS SHOP_TP
-			    ,  SHOP_CD
-			    ,  FN_GET_SHOP_NM(COMP_CD, SHOP_CD) AS SHOP_NM
-			    ,  IN_DATE AS SORT
-			    ,  TO_NUMBER(SUBSTR(IN_DATE, 7, 2)) || '일' AS INDATE
-			    ,  SUBSTR(TO_CHAR(TO_DATE(IN_DATE, 'YYYYMMDD'), 'DAY'), 1, 1) AS DAY
-				#{rdoSear}
-			FROM(
-			    SELECT A.COMP_CD
-			        ,  B.SALE_DT AS IN_DATE
-			        ,  A.SHOP_CD
-			        ,  DECODE(A.SUP_INQ_YN, 'Y', B.SUP_AMT, B.SALE_AMT) AS SALE_AMT
-			        ,  B.SALE_QTY
-			        ,  A.SHOP_TP
-			        ,  C.PLAN_CHG_AMT
-			    FROM SHSHOP A,SLDAYSHOPBRDSUM B , SLPLANDAY C
-			    WHERE 1 = 1
-			        AND A.COMP_CD = ${variableScope.gv_CompCd}
-			        AND A.COMP_CD = B.COMP_CD
-			        AND A.SHOP_CD = B.SHOP_CD
-			        AND B.COMP_CD = C.COMP_CD(+)
-			        AND B.SHOP_CD = C.SHOP_CD(+)
-			        AND B.SALE_DT = C.PLAN_DT(+)
-			        AND C.BIZ_DIV(+) = ${biz_div}
-			        AND B.SALE_DT LIKE ${mskMon} || '%'
-			        AND EXISTS(
-			            SELECT 'X'
-			            FROM SHSHOPBRD E
-			            WHERE 1 = 1
-			                AND E.COMP_CD = B.COMP_CD
-			                AND E.SHOP_CD = B.SHOP_CD
-			                AND E.BR_CD   = B.BR_CD
-			                AND E.BIZ_DIV = ${biz_div}
-			                #{teamCd}
-			                #{checkWhere2}
-			                #{chkOnOnlyYn}
-			        )
-			        #{checkWhere}
-			        #{rdoGubun}
-			        #{shopTp}
-			        #{shopGb}
+<!-- 
+ * @since 2017.05.12
+ * @version 1.0
+ * @author Pyun Do Sin.
+-->
+<statements>
+
+
+	<statement id="getGrd01">
+		<sql><![CDATA[
+			WITH TEMP_TBL01 AS(
+			SELECT A.COMP_CD      AS COMP_CD
+			     , A.REF_CD       AS IT
+			     , A.REF_SNM      AS IT_NM
+			     , A.BR_CD		AS BR_CD
+			  FROM CFCODEBRD A
+			 WHERE A.COMP_CD = ${variableScope.gv_CompCd}
+			   AND A.GBN_CD  = 'BR001'
+			   AND A.USE_YN  = 'Y'
+   			   and exists (  select 'x'
+                   from (
+                       select fn_get_split(s, level + 1, ',') br_cd
+                         from (select ',' || ${br_cd} || ',' s from dual)
+                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+                       )
+                   where 1 = 1
+                   and br_cd = a.br_cd
+				 ) 
 			)
-			GROUP BY COMP_CD, SHOP_TP, SHOP_CD, IN_DATE
-			ORDER BY SHOP_TP, SHOP_CD, IN_DATE
-  	 ]]></sql>
-	<fragment id = "checkWhere">
-		<if test="${not empty edtShopCd}">  <![CDATA[ AND A.SHOP_CD   = ${edtShopCd}   ]]></if>
-        <if test="${not empty edtShopStat}"><![CDATA[ AND A.SHOP_STAT = ${edtShopStat} ]]></if>
-        <if test="${not empty edtAreaCd}">  <![CDATA[ AND A.AREA_CD   = ${edtAreaCd}   ]]></if>
-        <if test="${not empty edtGrpCd}"><![CDATA[
-				AND EXISTS
-                  (
-                     SELECT 'X'
-                      FROM CFSHGRPH E,CFSHGRPD F
-                     WHERE 1 = 1
-			                AND E.COMP_CD = A.COMP_CD
-			                AND F.COMP_CD = A.COMP_CD
-			                AND F.SHOP_CD = A.SHOP_CD
-			                AND F.GRP_ID = ${edtGrpCd}
-			                AND E.BIZ_DIV = ${biz_div}
-			                AND E.BIZ_DIV = F.BIZ_DIV
-                   )  
+			, TEMP_TBL02 AS(
+			SELECT A.COMP_CD
+			     , B.IT
+			     , B.BR_CD
+			     , A.SJ_BON_TP
+			     , A.SJ_DE_TP
+			     , A.SO_FR_DT
+			  FROM CSCLAIM A
+			     , PLSTYCD B
+			     , SHSHOP C
+			 WHERE 1=1
+			   AND A.COMP_CD      = B.COMP_CD
+			   AND A.STY_CD       = B.STY_CD
+			   AND A.COMP_CD      = C.COMP_CD
+			   AND A.RCPT_SHOP_CD = C.SHOP_CD
+			   AND A.COMP_CD      = ${variableScope.gv_CompCd}
+			   AND EXISTS ( SELECT 1
+					               			   FROM SHSHOPBRD D
+					              			  WHERE D.COMP_CD = A.COMP_CD
+					                 			AND D.SHOP_CD = A.RCPT_SHOP_CD
+					                 			AND D.BIZ_DIV = ${biz_div}
+					                 			)
+			   #{checkWhere}
+			)
+			SELECT RNUM                                 AS RNUM
+			     , MAX(GUBUN)                           AS GUBUN
+			     , SUM(CS_CNT)                          AS COL00
+			     , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'A', CS_CNT, 0), 'S', DECODE(IT, 'C', CS_CNT,0) )) AS COL01
+                 , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'B', CS_CNT, 0), 'S', DECODE(IT, 'H', CS_CNT,0) )) AS COL02
+                 , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'D', CS_CNT, 0), 'S', DECODE(IT, 'I', CS_CNT,0) )) AS COL03
+                 , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'E', CS_CNT, 0), 'S', DECODE(IT, 'J', CS_CNT,0) )) AS COL04
+                 , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'F', CS_CNT, 0), 'S', DECODE(IT, 'K', CS_CNT,0) )) AS COL05
+                 , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'K', CS_CNT, 0), 'S', DECODE(IT, 'L', CS_CNT,0) )) AS COL06
+                 , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'S', CS_CNT, 0), 'S', DECODE(IT, 'R', CS_CNT,0) )) AS COL07
+                 , MAX (DECODE (BR_CD, 'A', DECODE(IT, 'Z', CS_CNT, 0), 'S', 0 )) AS COL08
+                 , MAX(BR_CD)							AS BR_CD
+			  FROM (
+			        SELECT '1'                  AS RNUM
+			             , '접수'               	AS GUBUN
+			             , A.IT                 AS IT
+			             , MAX(A.IT_NM)         AS IT_NM
+			             , COUNT(B.COMP_CD)     AS CS_CNT
+			             , MAX(A.BR_CD)			AS BR_CD
+			          FROM TEMP_TBL01 A
+			             , TEMP_TBL02 B
+			         WHERE 1=1
+			           AND A.COMP_CD = B.COMP_CD (+)
+			           AND A.BR_CD	 = B.BR_CD	 (+)
+			           AND A.IT      = B.IT      (+)
+			         GROUP BY A.IT
+			        UNION ALL
+			        SELECT '2'                  AS RNUM
+			             , '완료'               AS GUBUN
+			             , A.IT                 AS IT
+			             , MAX(A.IT_NM)         AS IT_NM
+			             , COUNT(B.COMP_CD)     AS CS_CNT
+			             , MAX(A.BR_CD)			AS BR_CD
+			          FROM TEMP_TBL01 A
+			             , TEMP_TBL02 B
+			         WHERE 1=1
+			           AND A.COMP_CD = B.COMP_CD (+)
+			           AND A.BR_CD	 = B.BR_CD	 (+)
+			           AND A.IT      = B.IT      (+)
+			           AND B.SO_FR_DT (+) IS NOT NULL
+			         GROUP BY A.IT
+			        UNION ALL
+			        SELECT '3'                  AS RNUM
+			             , '미완료'             AS GUBUN
+			             , A.IT                 AS IT
+			             , MAX(A.IT_NM)         AS IT_NM
+			             , COUNT(B.COMP_CD)     AS CS_CNT
+			             , MAX(A.BR_CD)			AS BR_CD
+			          FROM TEMP_TBL01 A
+			             , TEMP_TBL02 B
+			         WHERE 1=1
+			           AND A.COMP_CD = B.COMP_CD (+)
+			           AND A.BR_CD	 = B.BR_CD	 (+)
+			           AND A.IT      = B.IT      (+)
+			           AND B.SO_FR_DT (+) IS NULL
+			         GROUP BY A.IT
+			       )
+			 GROUP BY RNUM
+			 ORDER BY RNUM
+		]]></sql>
+		<fragment id="checkWhere">
+			<if test="${not empty biz_div}"><![CDATA[ AND C.BIZ_DIV = ${biz_div} ]]></if>
+			<if test="${not empty shop_gb}">
+				<![CDATA[ 
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') shop_gb
+			                         from (select ',' || ${shop_gb} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and shop_gb = c.shop_gb
+						  )	 
+				]]>
+			</if>
+			<if test="${not empty shop_cd}"><![CDATA[ AND C.SHOP_CD = ${shop_cd} ]]></if>
+			<if test="${not empty year_cd}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') year_cd
+			                         from (select ',' || ${year_cd} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and year_cd = b.year_cd
+						  )			
+			]]></if>
+			<if test="${not empty it}">
+				<![CDATA[ 
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') it
+			                         from (select ',' || ${it} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and it = b.it
+						  ) 
+				]]>
+			</if>
+			<if test="${not empty item}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') item
+			                         from (select ',' || ${item} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and item = b.item
+						  )			
+			]]></if>
+			<if test="${date_gb eq '1'}"><![CDATA[
+			   AND A.SJ_ST_DT     >= ${fr_date}
+			   AND A.SJ_ST_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '2'}"><![CDATA[
+			   AND A.RCPT_DT     >= ${fr_date}
+			   AND A.RCPT_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '3'}"><![CDATA[
+			   AND A.SO_DT       >= ${fr_date}
+			   AND A.SO_DT       <= ${to_date}
+			]]></if>
+		</fragment>
+	</statement>
 
-	         ]]></if>
-    </fragment>
-	<fragment id = "checkWhere2">
-             <if test="${not empty shop_user and chkOnOnlyYn == 'N'}"><![CDATA[ AND D.TEAM_CD || ':' || D.SHOP_USER = ${shop_user} ]]></if>       
-    </fragment>
-    
-    <fragment id = "chkOnOnlyYn">
-             <if test="${chkOnOnlyYn == 'Y'}"><![CDATA[ AND D.TEAM_CD || ':' || D.SHOP_USER = '01:30' ]]></if>       
-    </fragment>
-    
 
-    <fragment id = "rdoSear">
-        <if test="${rdoSear =='1'}"><![CDATA[ , SUM(SALE_AMT) AS SALE_AMT, MAX(PLAN_CHG_AMT) AS PLAN_AMT	]]></if>
-        <if test="${rdoSear =='2'}"><![CDATA[ , SUM(SALE_QTY) AS SALE_AMT, MAX(PLAN_CHG_AMT) AS PLAN_AMT	]]></if>
-    </fragment>
-    <fragment id="rdoGubun">
-    	<if test="${rdoGubun == '1'}"><![CDATA[ AND (C.PLAN_MON IS NULL OR C.PLAN_MON = ${mskMon})															]]></if>
-    	<if test="${rdoGubun == '2'}"><![CDATA[ AND (C.PLAN_DT IS NULL OR (C.PLAN_DT >= ${mskMon}||'01' AND C.PLAN_DT <= ${mskDt}))		]]></if>
-    </fragment>
-	    <fragment id="teamCd" ref="teamCd" />
-		<fragment id="shopGb" ref="shopGb" />
-		<fragment id="shopTp" ref="shopTp" />
+	<statement id="getGrd02">
+		<sql><![CDATA[
+			WITH TEMP_TBL01 AS(
+			SELECT REF_CD           	AS SO_RES_TP
+		        ,  REF_NM           	AS SO_RES_TP_NM  
+		      FROM CFCODE 
+		     WHERE COMP_CD=${variableScope.gv_CompCd}
+		       AND GBN_CD='SL063'
+		       AND USE_YN='Y' 
+		       AND REF_CD <> '*'
+		     UNION ALL
+		    SELECT '99'             	AS SO_RES_TP
+		        ,  '미입력'            	AS SO_RES_TP_NM
+		      FROM DUAL
+			)
+			, TEMP_TBL02 AS(
+			SELECT A.COMP_CD                                                            AS COMP_CD
+			     , NVL( A.SO_RES_TP, '99')                                              AS SO_RES_TP
+			     , COUNT(A.COMP_CD) OVER(PARTITION BY A.COMP_CD ORDER BY A.COMP_CD)     AS CS_TOT
+			     , C.IT
+			  FROM CSCLAIM A
+			  	 , SHSHOP B
+			  	 , PLSTYCD C
+			 WHERE 1=1
+			   AND A.COMP_CD      = B.COMP_CD
+			   AND A.RCPT_SHOP_CD = B.SHOP_CD
+			   AND A.COMP_CD 	  = C.COMP_CD(+)
+			   AND A.STY_CD 	  = C.STY_CD(+)
+			   AND A.COMP_CD      = ${variableScope.gv_CompCd}			  
+			  /* AND A.SO_FR_DT    IS NOT NULL*/
+			   #{checkWhere}
+			)
+			SELECT A.SO_RES_TP                                          AS SO_RES_TP
+			     , MAX(A.SO_RES_TP_NM)                                  AS SO_RES_TP_NM
+			     , COUNT(B.COMP_CD)                                    	AS CS_CNT
+			     , ROUND(COUNT(B.COMP_CD) / MAX(B.CS_TOT) * 100, 0)    	AS CS_RT
+			     #{checkSelect}
+			  FROM TEMP_TBL01 A
+			     , TEMP_TBL02 B
+			 WHERE 1=1
+			   AND A.SO_RES_TP = B.SO_RES_TP (+)
+			 GROUP BY A.SO_RES_TP
+			 ORDER BY A.SO_RES_TP
+		]]></sql>
+		<fragment id="checkSelect">
+			<if test="${not empty it}"><![CDATA[ , MAX(B.IT)		AS IT ]]></if>
+		</fragment>
+		<fragment id="checkWhere">
+			<if test="${not empty biz_div}"><![CDATA[ AND B.BIZ_DIV = ${biz_div} ]]></if>
+			<if test="${not empty shop_gb}">
+				<![CDATA[ 
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') shop_gb
+			                         from (select ',' || ${shop_gb} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and shop_gb = b.shop_gb
+						  ) 
+				]]>
+			</if>
+			<if test="${not empty shop_cd}"><![CDATA[ AND B.SHOP_CD = ${shop_cd} ]]></if>
+			<if test="${not empty br_cd}">
+				<![CDATA[ and exists (  select 'x'
+                   from (
+                       select fn_get_split(s, level + 1, ',') br_cd
+                         from (select ',' || ${br_cd} || ',' s from dual)
+                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+                       )
+                   where 1 = 1
+                   and br_cd = c.br_cd
+				 	) 		 
+				 ]]>
+			</if>
+			<if test="${not empty year_cd}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') year_cd
+			                         from (select ',' || ${year_cd} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and year_cd = c.year_cd
+						  )			
+			]]></if>
+			<if test="${not empty it}">
+				<![CDATA[  	
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') it
+			                         from (select ',' || ${it} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and it = c.it
+						  )				 
+				]]>
+			</if>
+			<if test="${not empty item}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') item
+			                         from (select ',' || ${item} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and item = c.item
+						  )			
+			]]></if>
+			
+			<if test="${date_gb eq '1'}"><![CDATA[
+			   AND A.SJ_ST_DT     >= ${fr_date}
+			   AND A.SJ_ST_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '2'}"><![CDATA[
+			   AND A.RCPT_DT     >= ${fr_date}
+			   AND A.RCPT_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '3'}"><![CDATA[
+			   AND A.SO_DT       >= ${fr_date}
+			   AND A.SO_DT       <= ${to_date}
+			]]></if>
+		</fragment>
+	</statement>
 
-	</statement> 
+
+	<statement id="getGrd03">
+		<sql><![CDATA[
+			WITH TEMP_TBL00 AS(
+			SELECT A.COMP_CD                    							AS COMP_CD
+	             , B.IT                         							AS IT
+	             , B.BR_CD													AS BR_CD
+	             , A.SJ_BON_TP                  							AS AD_CD
+	             , A.RCPT_SHOP_CD 	            							AS RCPT_SHOP_CD
+	             , A.STY_CD													AS STY_CD
+	             , B.STY_NM													AS STY_NM
+	             , A.COL_CD													AS COL_CD
+	             , A.SIZE_CD												AS SIZE_CD
+	             , B.CUST_CD												AS CUST_CD
+	             , A.SJ_RESP_TP												AS SJ_RESP_TP
+	             , FN_GET_CFCODE_NM(A.COMP_CD,'SL055',A.SJ_RESP_TP)			AS SJ_RESP_TP_NM
+	             , (SELECT CUST_NM
+	                  FROM PRCUST
+	                 WHERE COMP_CD = A.COMP_CD
+	                   AND CUST_CD = B.CUST_CD)								AS CUST_NM
+	             , A.SO_RES_TP												AS SO_RES_TP
+	          FROM CSCLAIM A
+	             , PLSTYCD B
+	         WHERE 1=1
+	           AND A.COMP_CD      = B.COMP_CD
+	           AND A.STY_CD       = B.STY_CD
+	           AND A.COMP_CD      = ${variableScope.gv_CompCd}
+	           #{checkClaim}
+			) 
+			, TEMP_TBL01 AS(
+			SELECT A.COMP_CD
+			     , A.IT
+			     , A.AD_CD
+			     , A.AD_NM
+			  FROM CSCLAIMRESH A
+			 WHERE  A.COMP_CD = ${variableScope.gv_CompCd}
+			   AND A.USE_YN  = 'Y'
+			 ORDER BY A.AD_CD
+			)
+			, TEMP_TBL02 AS(
+			SELECT A.COMP_CD
+				 , A.SHOP_CD
+			  FROM SHSHOP A
+			 WHERE 1=1
+			   AND A.COMP_CD = ${variableScope.gv_CompCd}
+			   #{checkWhere}
+			)
+			#{checkQuery}
+		]]></sql>
+		<fragment id="checkQuery">
+			<if test="${srch_gb == 'Default'}"><![CDATA[
+				SELECT A.IT                                                                                     AS IT
+				     , FN_GET_CFCODEBRD_NM(A.COMP_CD, MAX(A.BR_CD), 'BR001', A.IT)                              AS IT_NM
+				     , A.SJ_RESP_TP																				AS SJ_RESP_TP
+				     , MAX(A.SJ_RESP_TP_NM)																		AS SJ_RESP_TP_NM
+				     , A.AD_CD                                                                                  AS AD_CD
+				     , MAX(A.AD_NM)                                                                             AS AD_NM
+				     , COUNT(1)                                                                                 AS CS_CNT
+				     , ROUND(COUNT(1)/SUM(COUNT(1)) OVER(PARTITION BY A.COMP_CD ORDER BY A.COMP_CD)*100, 2)     AS CS_RT
+				  FROM (
+				        SELECT A.COMP_CD                               AS COMP_CD
+				             , A.IT                                    AS IT
+				             , A.BR_CD								   AS BR_CD
+				             , A.SJ_RESP_TP							   AS SJ_RESP_TP
+				             , A.SJ_RESP_TP_NM						   AS SJ_RESP_TP_NM
+				             , DECODE(B.AD_NM, NULL, 'X', A.AD_CD)     AS AD_CD
+				             , NVL(B.AD_NM, '미등록코드')              	   AS AD_NM				             
+				          FROM TEMP_TBL00 A
+				             , TEMP_TBL01 B
+				             , TEMP_TBL02 C
+				         WHERE 1 = 1
+				           AND A.COMP_CD      = B.COMP_CD (+)
+				           AND A.IT           = B.IT      (+)
+				           AND A.AD_CD        = B.AD_CD   (+)
+				           AND A.COMP_CD      = C.COMP_CD
+				           AND A.RCPT_SHOP_CD = C.SHOP_CD
+				       ) A
+				 GROUP BY A.COMP_CD, A.IT, A.SJ_RESP_TP, A.AD_CD
+				 ORDER BY A.COMP_CD, A.IT, A.SJ_RESP_TP, A.AD_CD
+			]]></if>
+			<if test="${srch_gb == 'format01'}"><![CDATA[
+				SELECT A.IT                                                                                     AS IT
+				     , FN_GET_CFCODEBRD_NM(A.COMP_CD, MAX(A.BR_CD), 'BR001', A.IT)                              AS IT_NM
+				     , A.SJ_RESP_TP							   													AS SJ_RESP_TP
+				     , MAX(A.SJ_RESP_TP_NM)						   												AS SJ_RESP_TP_NM
+				     , A.AD_CD                                                                                  AS AD_CD
+				     , MAX(A.AD_NM)                                                                             AS AD_NM
+				     , A.BD_CD																					AS BD_CD
+				     , MAX(A.BD_NM)																				AS BD_NM
+				     , COUNT(1)                                                                                 AS CS_CNT
+				     , ROUND(COUNT(1)/SUM(COUNT(1)) OVER(PARTITION BY A.COMP_CD ORDER BY A.COMP_CD)*100, 2)     AS CS_RT
+				  FROM (
+				        SELECT A.COMP_CD                               AS COMP_CD
+				             , A.IT                                    AS IT
+				             , A.BR_CD								   AS BR_CD
+				             , A.SJ_RESP_TP							   AS SJ_RESP_TP
+				             , A.SJ_RESP_TP_NM						   AS SJ_RESP_TP_NM
+				             , DECODE(B.AD_NM, NULL, 'X', A.AD_CD)     AS AD_CD
+				             , NVL(B.AD_NM, '미등록코드')              AS AD_NM
+				             , DECODE(B.BD_NM, NULL, 'X', A.BD_CD)	   AS BD_CD
+				             , NVL(B.BD_NM, '미등록코드')              AS BD_NM 
+				          FROM TEMP_TBL00 A
+				             , TEMP_TBL01 B
+				             , TEMP_TBL02 C
+				         WHERE 1 = 1
+				           AND A.COMP_CD      = B.COMP_CD (+)
+				           AND A.IT           = B.IT      (+)
+				           AND A.AD_CD        = B.AD_CD   (+)
+				           AND A.BD_CD        = B.BD_CD   (+)
+				           AND A.COMP_CD      = C.COMP_CD
+				           AND A.RCPT_SHOP_CD = C.SHOP_CD
+				       ) A
+				 GROUP BY A.COMP_CD, A.IT, A.SJ_RESP_TP, A.AD_CD, A.BD_CD
+				 ORDER BY A.COMP_CD, A.IT, A.SJ_RESP_TP, A.AD_CD, A.BD_CD
+			]]></if>
+			<if test="${srch_gb == 'format02'}"><![CDATA[
+				SELECT A.IT                                                                                     AS IT
+				     , FN_GET_CFCODEBRD_NM(A.COMP_CD, MAX(A.BR_CD), 'BR001', A.IT)                              AS IT_NM
+				     , A.SJ_RESP_TP							   													AS SJ_RESP_TP
+				     , MAX(A.SJ_RESP_TP_NM)						   												AS SJ_RESP_TP_NM
+				     , A.AD_CD                                                                                  AS AD_CD
+				     , MAX(A.AD_NM)                                                                             AS AD_NM
+				     , A.SO_RES_TP																				AS SO_RES_TP
+				     , NVL(FN_GET_CFCODE_NM(A.COMP_CD, 'SL063', A.SO_RES_TP), '미입력')							AS SO_RES_TP_NM
+				     , A.STY_CD																					AS STY_CD
+				     , MAX(A.STY_NM)																			AS STY_NM
+				     , A.COL_CD																					AS COL_CD
+				     , A.SIZE_CD																				AS SIZE_CD
+				     , MAX(A.CUST_CD)																			AS CUST_CD
+				     , MAX(A.CUST_NM)																			AS CUST_NM
+				     , COUNT(1)                                                                                 AS CS_CNT
+				     , ROUND(COUNT(1)/SUM(COUNT(1)) OVER(PARTITION BY A.COMP_CD ORDER BY A.COMP_CD)*100, 2)     AS CS_RT
+				  FROM (
+				        SELECT A.COMP_CD                               	AS COMP_CD
+				             , A.IT                                    	AS IT
+				             , A.BR_CD									AS BR_CD
+				             , A.SJ_RESP_TP							   	AS SJ_RESP_TP
+				             , A.SJ_RESP_TP_NM						   	AS SJ_RESP_TP_NM
+				             , DECODE(B.AD_NM, NULL, 'X', A.AD_CD)     	AS AD_CD
+				             , NVL(B.AD_NM, '미등록코드')              		AS AD_NM
+				             , A.SO_RES_TP								AS SO_RES_TP
+				             , A.STY_CD									AS STY_CD 
+				             , A.STY_NM                             	AS STY_NM 
+				             , A.COL_CD                             	AS COL_CD 
+				             , A.SIZE_CD                            	AS SIZE_CD
+				             , A.CUST_CD                            	AS CUST_CD
+				             , A.CUST_NM                            	AS CUST_NM
+				          FROM TEMP_TBL00 A
+				             , TEMP_TBL01 B
+				             , TEMP_TBL02 C
+				         WHERE 1 = 1
+				           AND A.COMP_CD      = B.COMP_CD (+)
+				           AND A.IT           = B.IT      (+)
+				           AND A.AD_CD        = B.AD_CD   (+)
+				           AND A.COMP_CD      = C.COMP_CD
+				           AND A.RCPT_SHOP_CD = C.SHOP_CD
+				       ) A
+				 GROUP BY A.COMP_CD, A.IT, A.SJ_RESP_TP, A.AD_CD, A.STY_CD, A.COL_CD, A.SIZE_CD, A.SO_RES_TP
+				 ORDER BY A.COMP_CD, A.IT, A.SJ_RESP_TP, A.AD_CD, A.STY_CD, A.COL_CD, A.SIZE_CD
+			]]></if>
+		</fragment>
+		<fragment id="checkWhere">
+			<if test="${not empty biz_div}"><![CDATA[ AND A.BIZ_DIV = ${biz_div} ]]></if>
+			<if test="${not empty shop_gb}">
+				<![CDATA[  
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') shop_gb
+			                         from (select ',' || ${shop_gb} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and shop_gb = a.shop_gb
+						  )
+				]]>
+			</if>
+			<if test="${not empty shop_cd}"><![CDATA[ AND A.SHOP_CD = ${shop_cd} ]]></if>
+		</fragment>
+		<fragment id="checkClaim">
+			<if test="${date_gb eq '1'}"><![CDATA[
+			   AND A.SJ_ST_DT     >= ${fr_date}
+			   AND A.SJ_ST_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '2'}"><![CDATA[
+			   AND A.RCPT_DT     >= ${fr_date}
+			   AND A.RCPT_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '3'}"><![CDATA[
+			   AND A.SO_DT       >= ${fr_date}
+			   AND A.SO_DT       <= ${to_date}
+			]]></if>
+			<if test="${not empty br_cd}">
+				<![CDATA[ 
+				  and exists (  select 'x'
+                  from (
+                       select fn_get_split(s, level + 1, ',') br_cd
+                         from (select ',' || ${br_cd} || ',' s from dual)
+                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+                       )
+                  where 1 = 1
+                  and br_cd = b.br_cd
+ 							  )  
+				]]>
+			</if>
+			<if test="${not empty year_cd}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') year_cd
+			                         from (select ',' || ${year_cd} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and year_cd = b.year_cd
+						  )			
+			]]></if>
+			<if test="${not empty it}">
+				<![CDATA[ 
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') it
+			                         from (select ',' || ${it} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and it = b.it
+						  )	 
+				]]>
+			</if>
+			<if test="${not empty item}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') item
+			                         from (select ',' || ${item} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and item = b.item
+						  )			
+			]]></if>
+		</fragment>
+	</statement>
+
+
+	<statement id="getGrd04">
+		<sql><![CDATA[
+			SELECT A.RCPT_NO                                            AS RCPT_NO
+			     , A.RCPT_DT                                            AS RCPT_DT
+			     , A.RCPT_SHOP_CD                                       AS RCPT_SHOP_CD
+			     , FN_GET_SHOP_NM(A.COMP_CD, A.RCPT_SHOP_CD)            AS RCPT_SHOP_NM
+			     , A.STY_CD                                             AS STY_CD
+			     , A.STY_NM                                             AS STY_NM
+			     , A.COL_CD                                             AS COL_CD
+			     , A.SIZE_CD                                            AS SIZE_CD
+			     , nvl(fn_get_size_nm(a.comp_cd, a.sty_cd, a.size_cd), a.size_cd)   				as size_nm
+			     , A.CUS_NM                                             AS CUS_NM
+			     , A.SJ_ST_DT                                           AS SJ_ST_DT
+			     , A.SJ_PL_DT                                           AS SJ_PL_DT
+			     , A.SJ_PL_TP                                           AS SJ_PL_TP
+			     , FN_GET_CFCODE_NM(A.COMP_CD, 'SL527', A.SJ_PL_TP)     AS SJ_PL_TP_NM
+			     , A.SJ_CUST_CD                                         AS SJ_CUST_CD
+			     , FN_GET_PRCUST_NM(A.COMP_CD, A.SJ_CUST_CD)            AS SJ_CUST_NM
+			     , A.SO_DT                                         		AS SO_DT
+			     , A.SO_RES_TP                                          AS SO_RES_TP
+			     , FN_GET_CFCODE_NM(A.COMP_CD, 'SL063', A.SO_RES_TP)    AS SO_RES_TP_NM
+			     , A.SO_FR_DT                                           AS SO_FR_DT
+			     , A.SJ_END_DT											AS SJ_END_DT
+			     , CASE WHEN A.SO_FR_DT IS NULL AND A.RCPT_HP_DT < TO_CHAR(SYSDATE, 'YYYYMMDD') THEN 'RED' ELSE 'DEFAULT' END		AS CHK_RCPT_HP_DT
+			  FROM (
+			        SELECT A.*
+			             , B.STY_NM
+			             , B.IT
+			          FROM CSCLAIM A
+			     		 , PLSTYCD B
+			         WHERE 1=1
+			           AND A.COMP_CD = B.COMP_CD
+			           AND A.STY_CD  = B.STY_CD
+			           AND A.COMP_CD = ${variableScope.gv_CompCd}
+			           #{checkIt}
+			       ) A
+			     , (
+			        SELECT A.COMP_CD	AS COMP_CD
+					     , A.IT			AS IT
+					     , A.AD_CD		AS SJ_BON_TP
+					  FROM CSCLAIMRESH A
+					 WHERE  A.COMP_CD = ${variableScope.gv_CompCd}
+					   AND A.USE_YN  = 'Y'
+			       ) B
+			     , SHSHOP C
+			 WHERE 1=1
+			   AND A.COMP_CD      = B.COMP_CD   (+)
+			   AND A.IT           = B.IT        (+)
+			   AND A.SJ_BON_TP    = B.SJ_BON_TP (+)
+			   AND A.COMP_CD      = C.COMP_CD
+			   AND A.RCPT_SHOP_CD = C.SHOP_CD
+			   AND A.COMP_CD      = ${variableScope.gv_CompCd}
+			   #{checkClaim}
+			   #{checkWhere}
+			 ORDER BY RCPT_NO, RCPT_DT, RCPT_SHOP_CD
+		]]></sql>
+		<fragment id="checkClaim">
+			<if test="${date_gb eq '1'}"><![CDATA[
+			   AND A.SJ_ST_DT     >= ${fr_date}
+			   AND A.SJ_ST_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '2'}"><![CDATA[
+			   AND A.RCPT_DT     >= ${fr_date}
+			   AND A.RCPT_DT     <= ${to_date}
+			]]></if>
+			<if test="${date_gb eq '3'}"><![CDATA[
+			   AND A.SO_DT       >= ${fr_date}
+			   AND A.SO_DT       <= ${to_date}
+			]]></if>
+		</fragment>
+		<fragment id="checkWhere">
+			<if test="${grd_01 == '2'}"   ><![CDATA[ AND A.SO_FR_DT IS NOT NULL  ]]></if>
+			<if test="${grd_01 == '3'}"   ><![CDATA[ AND A.SO_FR_DT IS NULL      ]]></if>
+			<if test="${not empty grd_02 and grd_02 != '99'}"><![CDATA[	
+					AND A.SO_RES_TP = ${grd_02} 
+					/*AND A.SO_FR_DT IS NOT NULL*/	
+			]]></if>
+			<if test="${not empty grd_02 and grd_02 == '99'}"><![CDATA[	
+					AND A.SO_RES_TP IS NULL
+					/*AND A.SO_FR_DT IS NOT NULL*/	
+			]]></if>
+			<if test="${not empty grd_02_1}"><![CDATA[
+				AND A.IT = ${grd_02_1}
+			]]></if>
+			<if test="${grd_03_1 == 'Default'}"><![CDATA[
+				AND A.IT        = ${grd_03_2}
+				AND A.SJ_BON_TP = ${grd_03_3}
+			]]></if>
+			<if test="${grd_03_1 == 'format01'}"><![CDATA[
+				AND A.IT        = ${grd_03_2}
+				AND A.SJ_BON_TP = ${grd_03_3}
+				AND A.SJ_DE_TP  = ${grd_03_4}
+			]]></if>
+			<if test="${grd_03_1 == 'format02'}"><![CDATA[
+				AND B.IT        = ${grd_03_2}
+				AND A.SJ_BON_TP = ${grd_03_3}
+				AND A.STY_CD    = ${grd_03_5}
+				AND A.COL_CD    = ${grd_03_6}
+				AND A.SIZE_CD   = ${grd_03_7}
+			]]></if>
+			<if test="${not empty biz_div}"><![CDATA[ AND C.BIZ_DIV = ${biz_div} ]]></if>
+			<if test="${not empty shop_gb}">
+				<![CDATA[ 
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') shop_gb
+			                         from (select ',' || ${shop_gb} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and shop_gb = c.shop_gb
+						  ) 
+				]]>
+			</if>
+			<if test="${not empty shop_cd}"><![CDATA[ AND C.SHOP_CD = ${shop_cd} ]]></if>
+		</fragment>
+		
+		<fragment id="checkIt">
+			<if test="${not empty itcode}"><![CDATA[ and b.it	= ${itcode}	]]></if>			
+			<if test="${not empty br_cd}">
+			<![CDATA[ 
+				   and exists (  select 'x'
+                   from (
+                       select fn_get_split(s, level + 1, ',') br_cd
+                         from (select ',' || ${br_cd} || ',' s from dual)
+                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+                       )
+                   where 1 = 1
+                   and br_cd = b.br_cd
+ 							   ) 	
+ 					]]>
+			</if>	
+			<if test="${not empty year_cd}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') year_cd
+			                         from (select ',' || ${year_cd} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and year_cd = b.year_cd
+						  )			
+			]]></if>
+			<if test="${not empty it}">
+				<![CDATA[ 
+					and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') it
+			                         from (select ',' || ${it} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and it = b.it
+						  )		
+				]]>
+			</if>	
+			<if test="${not empty item}"><![CDATA[ 
+				and exists (
+							select 'x'
+			                 from (
+			                       select fn_get_split(s, level + 1, ',') item
+			                         from (select ',' || ${item} || ',' s from dual)
+			                       connect by level <= (length(s) - length(replace(s, ',')) - 1)
+			                       )
+			                  where 1 = 1
+			                    and item = b.item
+						  )			
+			]]></if>	
+		</fragment>
+	</statement>
 	
+	
+	
+	
+	<!-- getItList -->
+	<statement id="getItList">
+		<sql><![CDATA[
+			SELECT A.COMP_CD
+			     , A.GBN_CD
+			     , A.REF_CD
+			     , A.REF_SNM
+              FROM CFCODEBRD A
+             WHERE 1=1
+               AND A.COMP_CD = ${variableScope.gv_CompCd}
+               AND A.GBN_CD = 'BR001'
+               AND EXISTS (  SELECT 'X'
+                   FROM (
+                       SELECT FN_GET_SPLIT(S, LEVEL + 1, ',') BR_CD
+                         FROM (SELECT ',' || ${br_cd} || ',' S FROM DUAL)
+                       CONNECT BY LEVEL <= (LENGTH(S) - LENGTH(REPLACE(S, ',')) - 1)
+                       )
+                   WHERE 1 = 1
+                   AND BR_CD = A.BR_CD
+					 	  ) 
+               AND A.USE_YN = 'Y'
+        ]]></sql>
+	</statement>
+
+	
+	
+	<statement id="empty">
+		<sql><![CDATA[
+			
+		]]></sql>
+	</statement>
 	
 </statements>
