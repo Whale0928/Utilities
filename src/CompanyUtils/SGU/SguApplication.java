@@ -1,4 +1,4 @@
-package User;
+package CompanyUtils.SGU;
 
 import InputUtils.InputText;
 
