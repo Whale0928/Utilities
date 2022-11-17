@@ -5,21 +5,23 @@ import java.util.*;
 public class LearnAboutCompare implements Comparator<Box> {
     public static List<Box> boxes = new LinkedList<Box>();
     public LearnAboutCompare() {
-        for(int i=0; i<15; i++){
-            int rNumber = new Random().nextInt();
-            Box box = new Box(String.valueOf(rNumber));
+        for(int i=0; i<5; i++){
+            int rNumber = new Random().nextInt(50);
+            Box box = new Box(rNumber+"번 박스");
             boxes.add(box);
         }
     }
     @Override
     public int compare(Box o1, Box o2) {
-        return 0;
+        if(o1.getBoxNumber()>o2.getBoxNumber()) return 1;
+        else return 0;
     }
-
 
     //실행 클래스
     public static void main(String[] args) {
         new LearnAboutCompare();
+        System.out.println(boxes);
+        boxes.sort((o1, o2) -> -1);
         System.out.println(boxes);
     }
 }
@@ -53,8 +55,7 @@ class Box{
 
     @Override
     public String toString() {
-        return "Box{" +
-                "boxNumber=" + boxNumber +
-                ", boxName='" + boxName;
+        return  "boxNumber=" + boxNumber +
+                ", boxName='" + boxName +"\n";
     }
 }
