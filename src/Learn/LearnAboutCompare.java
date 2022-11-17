@@ -1,8 +1,10 @@
 package Learn;
 
+import ValueObjects.Box;
+
 import java.util.*;
 
-public class LearnAboutCompare implements Comparator<Box> {
+public class LearnAboutCompare{
     public static List<Box> boxes = new LinkedList<Box>();
     public LearnAboutCompare() {
         for(int i=0; i<5; i++){
@@ -11,51 +13,16 @@ public class LearnAboutCompare implements Comparator<Box> {
             boxes.add(box);
         }
     }
-    @Override
-    public int compare(Box o1, Box o2) {
-        if(o1.getBoxNumber()>o2.getBoxNumber()) return 1;
-        else return 0;
-    }
+
 
     //실행 클래스
     public static void main(String[] args) {
-        new LearnAboutCompare();
+        LearnAboutCompare learnAboutCompare = new LearnAboutCompare();
         System.out.println(boxes);
-        boxes.sort((o1, o2) -> -1);
+
+        boxes.sort((o1, o2) -> {
+            return o1.getBoxName().compareTo(o2.getBoxName());
+        });
         System.out.println(boxes);
-    }
-}
-class Box{
-    private Long boxNumber;
-    private String boxName;
-    private static Long seq = 0l;
-    public Box() {
-    }
-
-    public Box(String boxName) {
-        this.boxNumber = (++seq);
-        this.boxName = boxName;
-    }
-
-    public Long getBoxNumber() {
-        return boxNumber;
-    }
-
-    public void setBoxNumber(Long boxNumber) {
-        this.boxNumber = boxNumber;
-    }
-
-    public String getBoxName() {
-        return boxName;
-    }
-
-    public void setBoxName(String boxName) {
-        this.boxName = boxName;
-    }
-
-    @Override
-    public String toString() {
-        return  "boxNumber=" + boxNumber +
-                ", boxName='" + boxName +"\n";
     }
 }
