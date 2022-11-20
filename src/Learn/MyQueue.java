@@ -1,11 +1,9 @@
 package Learn;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Queue;
 
 public class MyQueue<T> {
-    private final ArrayList<T> queue = new ArrayList<T>();
+    private final ArrayList<T> queue = new ArrayList<>();
 
     /**큐에 데이터를 삽입
      * Enqueue.
@@ -28,12 +26,9 @@ public class MyQueue<T> {
         return queue.remove(0);
     }
 
-    public boolean isEmpty() {
-        return queue.isEmpty();
-    }
 
     public static void main(String[] args) {
-        MyQueue<Integer> mq = new MyQueue<Integer>();
+        MyQueue<Integer> mq = new MyQueue<>();
         mq.enqueue(2);
         mq.enqueue(1);
         mq.enqueue(3);
