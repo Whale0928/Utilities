@@ -1,9 +1,11 @@
 package Learn;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Stack;
 
 public class MyStack {
-    Stack<Integer> stack = new Stack<>();
+    List<Integer> stack = new ArrayList<>();
 
     /**스택에 삽입
      * Push.
@@ -11,7 +13,7 @@ public class MyStack {
      * @param i the
      */
     public void push(Integer i) {
-        stack.push(i);
+        stack.add(i);
     }
 
     /**스택이 비어있지 않은 경우 값을 추출
@@ -21,7 +23,9 @@ public class MyStack {
      */
     public Integer pop() {
         if (isEmpty()) return null;
-        return stack.pop();
+        Integer result = stack.get(stack.size() - 1);
+        stack.remove(stack.size()-1);
+        return result;
     }
 
     /**스택의 값이 비어있는지 확인
