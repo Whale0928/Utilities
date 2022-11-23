@@ -1,75 +1,50 @@
 package API;
 
 
-import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 
 
 public class HttpUtil {
 
-    public static void callApi(JSONObject params, String type){
-        HttpURLConnection conn = null;
-        JSONObject responseJson = null;
+    public static void callApi(JSONObject params, String type) {
+        String key = "9Z%2FRt7EJguG7M5cGcaNE9kHzRxe1fS1%2FcgOWNQn3AyXg4a19A3almi%2FStT0WKlKYgikjqLNn5Wepnw9Hlup2DA%3D%3D";
+        String path = "http://apis.data.go.kr/1543061/abandonmentPublicSrvc/sido?numOfRows=30&pageNo=1&serviceKey="+key+"&_type=json";
+
+
+
         try {
-            //URL 설정
-            URL url = new URL("http://localhost:8080/test/api/action");
+            URL url = new URL(path);
+            HttpURLConnection con = (HttpURLConnection)url.openConnection();
 
-            conn = (HttpURLConnection) url.openConnection();
-
-            // type의 경우 POST, GET, PUT, DELETE 가능
-            conn.setRequestMethod(type);
-            conn.setRequestProperty("Content-Type", "application/json");
-            conn.setRequestProperty("Transfer-Encoding", "chunked");
-            conn.setRequestProperty("Connection", "keep-alive");
-            conn.setDoOutput(true);
+            con.setRequestMethod("GET");
 
 
-            BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(conn.getOutputStream()));
-            // JSON 형식의 데이터 셋팅
-            JSONObject commands = new JSONObject();
-            JSONArray jsonArray = new JSONArray();
+            int responseCode = con.getResponseCode();
 
-            params.addProperty("key", 1);
-            params.addProperty("age", 20);
-            params.addProperty("userNm", "홍길동");
+            InputStream inputStream = (InputStream) con.getContent();
+            InputStreamReader inputStreamReader = new InputStreamReader(inputStream,StandardCharsets.UTF_8);
+            System.out.println(inputStreamReader.getEncoding());
+            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
 
-            commands.add("userInfo", params);
-            // JSON 형식의 데이터 셋팅 끝
-
-            // 데이터를 STRING으로 변경
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
-            String jsonOutput = gson.toJson(commands);
-
-            bw.write(commands.toString());
-            bw.flush();
-            bw.close();
-
-            // 보내고 결과값 받기
-            int responseCode = conn.getResponseCode();
-            if (responseCode == 200) {
-                BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line = "";
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
-                }
-                responseJson = new JSONObject(sb.toString());
-
-                // 응답 데이터
-                System.out.println("responseJson :: " + responseJson);
+            BufferedReader br;
+            if(responseCode==200) { // 정상 호출
+                br = bufferedReader;
+            } else {  // 에러 발생
+                br = new BufferedReader(new InputStreamReader(con.getErrorStream()));
             }
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (JSONException e) {
-            System.out.println("not JSON Format response");
+            String inputLine;
+            StringBuilder response = new StringBuilder();
+            while ((inputLine = br.readLine()) != null) {
+                response.append(inputLine);
+            }
+            br.close();
+            System.out.println(response.toString());
+        }catch (Exception e){
             e.printStackTrace();
         }
     }
