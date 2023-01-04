@@ -12,50 +12,65 @@ public class LineSort {
         BufferedReader reader = new BufferedReader(
                 new FileReader("D:\\BABAPRJ\\workspace\\Utilities\\src\\main\\java\\CompanyUtils\\SGU\\textFile.txt")
         );
-
-        StringBuilder sb1 = insertLineSorting(reader);
-        StringBuilder sb2 = selectLineSorting(reader);
-        
-        System.out.println(sb2);
+        StringBuilder sb = lineSorting(reader);
+        System.out.println(sb);
     }
 
-    private static StringBuilder insertLineSorting(BufferedReader reader) throws IOException {
+
+    private static StringBuilder lineSorting(BufferedReader reader) throws IOException {
         String str;
         StringBuilder sb = new StringBuilder();
-        while ((str = reader.readLine()) != null) {
+        String tempStr;
+        int rowCount =0;
+        while (!(str = reader.readLine()).contains("SELECT")) {
             List<String> arr = Arrays.stream(str.split(",")).toList();
             for (String oneLine : arr) {
                 if (oneLine.contains("(")) {
                     int wordIndex = oneLine.indexOf("(");
-                    sb.append(oneLine.substring(0, wordIndex).trim());
-                    sb.append("\n").append(oneLine.substring(wordIndex));
+                    sb.append("         ").append(oneLine.substring(0, wordIndex).trim());
+                    sb.append("\n").append("            ").append(oneLine.substring(wordIndex));
                 } else {
                     if (!oneLine.trim().equals("")) {
-                        sb.append("\n").append(",").append(oneLine);
+                        sb.append("\n").append("             ,").append(oneLine);
                     }
                 }
+            }
+        }
+        boolean flag = false;
+        tempStr = str;
+        while ((str = reader.readLine()) != null) {
+            if(rowCount == 0){
+                str = tempStr+str;
+                rowCount++;
+            }
+
+            List<String> arr = Arrays.stream(str.trim().split(",")).toList();
+
+            for (String oneLine : arr) {
+                if (oneLine.trim().equals("")) continue;
+                if (oneLine.contains("DECODE")) {
+                    int wordIndex = oneLine.indexOf("DECODE");
+                    sb.append("         ").append(oneLine.substring(0, wordIndex).trim());
+                    String decodeWord = oneLine.substring(wordIndex);
+                    sb.append("\n           ").append(decodeWord);
+                    flag = true;
+                    continue;
+                }
+
+                if (flag) {
+                    sb.append(",").append(oneLine);
+                } else {
+                    if (oneLine.contains("FROM") || oneLine.contains("WHERE") || oneLine.contains("ORDER")) {
+                        sb.append("\n").append("           ").append(oneLine);
+                    } else {
+                        sb.append("\n").append("            ,").append(oneLine);
+                    }
+                }
+
+                if (flag && oneLine.contains(")")) flag = false;
             }
         }
         return sb;
     }
 
-    private static StringBuilder selectLineSorting(BufferedReader reader) throws IOException {
-        String str;
-        StringBuilder sb = new StringBuilder();
-        while ((str = reader.readLine()) != null) {
-            List<String> arr = Arrays.stream(str.split(",")).toList();
-            for (String oneLine : arr) {
-                if (oneLine.contains("(")) {
-                    int wordIndex = oneLine.indexOf("(");
-                    sb.append(oneLine.substring(0, wordIndex).trim());
-                    sb.append("\n").append(oneLine.substring(wordIndex));
-                } else {
-                    if (!oneLine.trim().equals("")) {
-                        sb.append("\n").append(",").append(oneLine);
-                    }
-                }
-            }
-        }
-        return sb;
-    }
 }

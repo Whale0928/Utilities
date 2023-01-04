@@ -1,7 +1,10 @@
-SELECT DECODE(회사코드, '0', '10', '1', '20', '2', '30', '8', '70', 'X'), 배색번호, 거래처코드, 사입처, ITEM, 폭
-             , 사입가, 납품가, 성적서입력일, 성적서번호, 기타사항
-             , '부자재배색마스터' AS PROG_ID, 입력사번 AS REGI_ID
-             , 입력일 AS REGI_DT, '부자재배색마스터' AS PROG_UP, 입력사번 AS UPDT_ID
-             , 입력일 AS UPDT_DT, IP주소 AS ADDR_IP
-          FROM BABAERPUSER.부자재배색마스터
-         WHERE 회사코드 IN ('0', '1', '2', '8');
+INSERT INTO MRCOLTESTRPT (COMP_CD, COLMTCH_NO, COLMTCH_SEQ, SEQ_NO, COLMTCH_TEST, TEST_RT
+     , PROG_ID, REGI_ID
+     , REGI_DT, PROG_UP, UPDT_ID
+     , UPDT_DT, ADDR_IP)
+SELECT DECODE(회사코드, '0', '10', '1', '20', '2', '30', '8', '70', 'X'), 배색번호, 순번, 번호, 배색성적서, 비율
+     , '부자재배색성적서' AS PROG_ID, 입력사번 AS REGI_ID
+     , 입력일 AS REGI_DT, '부자재배색성적서' AS PROG_UP, 입력사번 AS UPDT_ID
+     , 입력일 AS UPDT_DT, IP주소 AS ADDR_IP
+  FROM BABAERPUSER.부자재배색성적서
+ WHERE 회사코드 IN ('0', '1', '2', '8');
