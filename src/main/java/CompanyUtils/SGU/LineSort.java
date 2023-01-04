@@ -22,6 +22,9 @@ public class LineSort {
         StringBuilder sb = new StringBuilder();
         String tempStr;
         int rowCount =0;
+        boolean flag = false;
+
+        //INSERT 문
         while (!(str = reader.readLine()).contains("SELECT")) {
             List<String> arr = Arrays.stream(str.split(",")).toList();
             for (String oneLine : arr) {
@@ -36,16 +39,17 @@ public class LineSort {
                 }
             }
         }
-        boolean flag = false;
+
+        sb.append("\n");
         tempStr = str;
+
+        //SELECT
         while ((str = reader.readLine()) != null) {
             if(rowCount == 0){
                 str = tempStr+str;
                 rowCount++;
             }
-
             List<String> arr = Arrays.stream(str.trim().split(",")).toList();
-
             for (String oneLine : arr) {
                 if (oneLine.trim().equals("")) continue;
                 if (oneLine.contains("DECODE")) {
@@ -60,7 +64,7 @@ public class LineSort {
                 if (flag) {
                     sb.append(",").append(oneLine);
                 } else {
-                    if (oneLine.contains("FROM") || oneLine.contains("WHERE") || oneLine.contains("ORDER")) {
+                    if (oneLine.contains("FROM") || oneLine.contains("WHERE") || oneLine.contains("AND")||oneLine.contains("ORDER")) {
                         sb.append("\n").append("           ").append(oneLine);
                     } else {
                         sb.append("\n").append("            ,").append(oneLine);

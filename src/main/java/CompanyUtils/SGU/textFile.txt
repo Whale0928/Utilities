@@ -1,10 +1,11 @@
-INSERT INTO MRCOLTESTRPT (COMP_CD, COLMTCH_NO, COLMTCH_SEQ, SEQ_NO, COLMTCH_TEST, TEST_RT
+INSERT INTO PLBRCD (COMP_CD, BR_CD, BR_NM, BR_KNM, USE_YN
      , PROG_ID, REGI_ID
      , REGI_DT, PROG_UP, UPDT_ID
      , UPDT_DT, ADDR_IP)
-SELECT DECODE(회사코드, '0', '10', '1', '20', '2', '30', '8', '70', 'X'), 배색번호, 순번, 번호, 배색성적서, 비율
-     , '부자재배색성적서' AS PROG_ID, 입력사번 AS REGI_ID
-     , 입력일 AS REGI_DT, '부자재배색성적서' AS PROG_UP, 입력사번 AS UPDT_ID
+SELECT DECODE(회사코드, '0', '10', '1', '20', '2', '30', '8', '70', 'X'), 코드, 코드명, 비고, DECODE(사용여부, '0', 'Y', 'N') AS 사용여부
+     , '공통STY1' AS PROG_ID, 입력사번 AS REGI_ID
+     , 입력일 AS REGI_DT, '공통STY1' AS PROG_UP, 입력사번 AS UPDT_ID
      , 입력일 AS UPDT_DT, IP주소 AS ADDR_IP
-  FROM BABAERPUSER.부자재배색성적서
- WHERE 회사코드 IN ('0', '1', '2', '8');
+  FROM BABAERPUSER.공통기초코드
+ WHERE 구분 = 'STY1'
+   AND 회사코드 IN ('0', '1', '2', '8');
