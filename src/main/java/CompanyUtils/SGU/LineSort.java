@@ -22,6 +22,7 @@ public class LineSort {
         StringBuilder sb = new StringBuilder();
         String tempStr;
         int rowCount =0;
+        int decodeCount =0;
         boolean flag = false;
 
         //INSERT 문
@@ -56,15 +57,20 @@ public class LineSort {
                     int wordIndex = oneLine.indexOf("DECODE");
                     sb.append("         ").append(oneLine.substring(0, wordIndex).trim());
                     String decodeWord = oneLine.substring(wordIndex);
-                    sb.append("\n           ").append(decodeWord);
+                    if (decodeCount>=1){
+                        sb.append("\n            , ").append(decodeWord);
+                    }else{
+                        sb.append("\n               ").append(decodeWord);
+                    }
                     flag = true;
+                    decodeCount++;
                     continue;
                 }
 
                 if (flag) {
                     sb.append(",").append(oneLine);
                 } else {
-                    if (oneLine.contains("FROM") || oneLine.contains("WHERE") || oneLine.contains("AND")||oneLine.contains("ORDER")) {
+                    if (oneLine.contains("GROUP") ||oneLine.contains("FROM") || oneLine.contains("WHERE") || oneLine.contains("AND")||oneLine.contains("ORDER")) {
                         sb.append("\n").append("           ").append(oneLine);
                     } else {
                         sb.append("\n").append("            ,").append(oneLine);
